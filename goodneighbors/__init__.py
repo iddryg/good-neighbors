@@ -211,39 +211,86 @@ class GoodNeighbors(object):
         ## Execute distance measure on a per-image basis
         images = full[self.groupby].drop_duplicates().copy()
         collect = []
+        # check during edits ------------------------------------------------
+        print('before looping through images.iterrows: ')
+        print('phenotypes.head(4)')
+        print(phenotypes.head(4))
+        print('total.head(4)')
+        print(total.head(4))
+        print('images.head(4)')
+        print(images.head(4))
+        print('beginning loop . . . . .')
         for i,r in images.iterrows():
             idf = pd.DataFrame(r).T
+            print('- - - - - - - - - - - - - - - - - - - - - - - -')
+            print('idf.head(4): ')
+            print(idf.head(4))
             #print(idf)
             if self.verbose: sys.stderr.write("================\n")
             if self.verbose: sys.stderr.write("Calculating distances for "+str(r)+"\n")
             one = full.merge(idf,on=self.groupby).set_index('db_id')
+            print('- - - - - - - - - - - - - - - - - - - - - - - -')
+            print('one.head(4): ')
+            print(one.head(4))
 
             # get all the distances
             coords = list(zip(one['x'],one['y']))
             dist = cdist(coords,coords)
             dist = pd.DataFrame(dist,columns=one.index,index=one.index)
+            print('- - - - - - - - - - - - - - - - - - - - - - - -')
+            print('dist.head(4): ')
+            print(dist.head(4))
+            print('dist shape: ' + str(dist.shape))
 
             # get the distances we are interested in
             s = one.apply(lambda x: 
                 dist.columns[dist.loc[x.name]<radius].tolist()
             ,1)
+            print('- - - - - - - - - - - - - - - - - - - - - - - -')
+            print('s.head(4) after applying radius filter: ')
+            print(s.head(4))
+            print('s shape: ' + str(s.shape))
             s = pd.DataFrame(s).apply(lambda x: pd.Series(*x),1).stack().reset_index().\
                 drop(columns='level_1').\
                 rename(columns={'level_0':'db_id',0:'n_db_id'}).dropna()
             s = s.astype(int)
+            print('- - - - - - - - - - - - - - - - - - - - - - - -')
+            print('s.head(4) after stacking: ')
+            print(s.head(4))
+            print('s shape: ' + str(s.shape))
             if include_self == True:
                 s = s.set_index('n_db_id') # going to join on this neighbor id
             else:
                 s = s.loc[s['db_id']!=s['n_db_id']].set_index('n_db_id') # going to join on this neighbor id
+            print('- - - - - - - - - - - - - - - - - - - - - - - -')
+            print('s.head(4) after setting index to n_db_id: ')
+            print(s.head(4))
+            print('s shape: ' + str(s.shape))
 
             # Shape the counts into a matrix
             cnts = s.merge(one[['phenotype_label']],left_index=True,right_index=True).reset_index().groupby(['db_id','phenotype_label']).count().\
                 reset_index().sort_values(['db_id','phenotype_label'])
+            print('- - - - - - - - - - - - - - - - - - - - - - - -')
+            print('cnts.head(4): ')
+            print(cnts.head(4))
+            print('cnts shape: ' + str(cnts.shape))
             ids = pd.DataFrame({'db_id':one.index.tolist()})
             ids['_key'] = 1
             cnts = ids.merge(phenotypes,on='_key').drop(columns=['_key']).merge(cnts,on=['db_id','phenotype_label'],how='left').fillna(0)
+            print('- - - - - - - - - - - - - - - - - - - - - - - -')
+            print('cnts.head(4) after merging ids with phenotypes and then merging with cnts: ')
+            print(cnts.head(4))
+            print('cnts shape: ' + str(cnts.shape))
             cnts['index'] = cnts['index'].astype(int)
+            print('- - - - - - - - - - - - - - - - - - - - - - - -')
+            print('cnts.head(4) after setting the "index" column as type int: ')
+            print(cnts.head(4))
+            print('cnts shape: ' + str(cnts.shape))
             cnts = cnts.pivot(columns='phenotype_label',index='db_id',values='index')
+            print('- - - - - - - - - - - - - - - - - - - - - - - -')
+            print('cnts.head(4) after pivoting: ')
+            print(cnts.head(4))
+            print('cnts shape: ' + str(cnts.shape))
 
             #subdist['_key'] = 1
             #if self.verbose: sys.stderr.write("merging to self\n")
@@ -264,6 +311,11 @@ class GoodNeighbors(object):
             #    fillna(0).astype(int).copy()
             collect.append(cnts)
         self.counts = pd.concat(collect)
+        print('- - - - - - - - - - - - - - - - - - - - - - - -')
+        print('self.counts.head(4): ')
+        print(self.counts.head(4))
+        print('self.counts shape: ' + str(self.counts.shape))
+        print('the end - - - - - - - - - - - - - - - - - - - - - - - -')
         return #self._counts
 
     def get_counts_per_radius(self,min_radius=0,max_radius=150,step_radius=2):
