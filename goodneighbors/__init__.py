@@ -289,6 +289,9 @@ class GoodNeighbors(object):
             print('cnts.head(4) after merging ids with phenotypes and then merging with cnts: ')
             print(cnts.head(4))
             print('cnts shape: ' + str(cnts.shape))
+            if 'index' not in cnts.columns:
+                # If there's only a few rows, sometimes the 'index' column is named 'n_db_id' from the reset_index()
+                cnts = cnts.rename(columns={"n_db_id": "index"})
             cnts['index'] = cnts['index'].astype(int)
             print('- - - - - - - - - - - - - - - - - - - - - - - -')
             print('cnts.head(4) after setting the "index" column as type int: ')
